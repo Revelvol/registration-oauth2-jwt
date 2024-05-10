@@ -1,10 +1,12 @@
 package api
 
 import (
+	"fmt"
+
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
+	"gorm.io/gorm"
 )
 
 // server serves Http request
@@ -46,9 +48,8 @@ func loginEndpoint(c *gin.Context){
 
 	// todo transform this into gin format form http
 	// Exchange the authorization code for tokens
-	token, err := oauthConfig.Exchange(context.Background(), c.Data())
+	token, err := oauthConfig.Exchange(c, "some CODE strint")
 	if err != nil {
-		http.Error(w, "Token exchange failed", http.StatusInternalServerError)
 		return
 	}
 	// Return the token details to the frontend
@@ -57,7 +58,7 @@ func loginEndpoint(c *gin.Context){
 		"refresh_token": token.RefreshToken,
 		"expiry":        token.Expiry,
 	}
-	
+	fmt.Printf("%s", response)
 	// call google to get user resource 
 
 	// get or save user TBL_USER (might want to use redis)

@@ -1,4 +1,4 @@
-package userService
+package service
 
 import (
 	"revelvoler/registration-service/internal/model"
