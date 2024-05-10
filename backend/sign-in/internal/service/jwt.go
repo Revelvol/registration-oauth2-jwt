@@ -12,7 +12,7 @@ type AuthClaims {
 
 func GenerateTokenFromUserExpireInEpoch(int expiredAt) string {
 
-	hmacSampleSecret := "someValueFromDotENV"
+	hmacSampleSecret := "someValueFromDotENV1"
 
 	claims := AuthClaims {
 		"julius",
