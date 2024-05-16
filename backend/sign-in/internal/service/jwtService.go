@@ -18,7 +18,7 @@ type AuthClaims struct {
 // Global variable declaration without semicolons
 var hmacSampleSecret = []byte("someValueFromDotENV")
 
-func GenerateTokenFromUserExpireInEpoch(expiredAtEpoch int) string {
+func GenerateTokenFromUserExpireInEpoch(expiredAtEpoch int) (string, error) {
 	
 	claims := AuthClaims {
 		"julius",
@@ -38,9 +38,9 @@ func GenerateTokenFromUserExpireInEpoch(expiredAtEpoch int) string {
 	tokenString, err := token.SignedString(hmacSampleSecret)
 
 	if err != nil {
-		return "rtuern error early hare "
+		return "", errors.New("Error occured when signing token")
 	}
-	return tokenString; 
+	return tokenString, nil;  
 }
 
 
@@ -78,7 +78,7 @@ func IsTokenValid(tokenString string) bool {
 	fmt.Println("Token is invalid for an unspecified reason")
 	return false
 }
-func ExtractValidTokenClaims(tokenString string)  {
+func ExtractValidTokenClaims(tokenString string) (AuthClaims , error)  {
 
 	authClaims := AuthClaims{}
 	// extract claims 
@@ -88,6 +88,7 @@ func ExtractValidTokenClaims(tokenString string)  {
 
 	if err != nil {
 		log.Fatal(err)
+		return AuthClaims{}, errors.New("Token cannot be parsed")
 	} 
 	// No need for explicit type assertion; token.Claims already points to authClaims
 	// else if claims, ok := token.Claims.(*AuthClaims); ok {
@@ -98,14 +99,15 @@ func ExtractValidTokenClaims(tokenString string)  {
 	// 	log.Fatal("unknown claims type, cannot proceed")
 	// }
 
-	if token.Valid {
-		fmt.Println("Token is valid")
-		// Now you can access the fields in authClaims
-		fmt.Println("UserName:", authClaims.UserName)
-		fmt.Println("Issuer:", authClaims.RegisteredClaims.Issuer)
-	} else {
-		fmt.Println("Token is invalid") 
+	if !token.Valid {
+		return AuthClaims{}, errors.New("Token is invalid")
 	}
+
+	fmt.Println("Token is valid")
+	// Now you can access the fields in authClaims
+	fmt.Println("UserName:", authClaims.UserName)
+	fmt.Println("Issuer:", authClaims.RegisteredClaims.Issuer)
+	return authClaims, nil	
 }
 
 
