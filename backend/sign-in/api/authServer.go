@@ -15,6 +15,13 @@ type Server struct {
 	Router *gin.Engine
 }
 
+// app holds the Cloud IAP certificates and audience field for this app, which
+// are needed to verify authentication headers set by Cloud IAP.
+type app struct {
+	certs map[string]string
+	aud   string
+}
+
 // OAuth configuration
 var oauthConfig = &oauth2.Config{
 	ClientID:     "YOUR_GOOGLE_CLIENT_ID",

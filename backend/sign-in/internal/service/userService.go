@@ -3,34 +3,54 @@ package service
 import (
 	"revelvoler/registration-service/internal/model"
 
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
 
-func SaveOrGetUserData(db *gorm.DB,  user *model.User) {
-	// find by email 
+func SaveOrGetUserData(db *gorm.DB, user *model.User) (error) {
 
-	// if email found return 
+	// find by email and populate the user id 
+	result := db.Where("email = ?", user.Email ).First(user)
 
-	// if not saved and return 
+	if result.Error == gorm.ErrRecordNotFound {
+		// if email not found saved to db 
+
+		//hash password first 
+		hashedPasword, err := bcrypt.GenerateFromPassword([]byte(user.Password),bcrypt.DefaultCost)
+		if err!= nil {
+			return err
+		}
+
+		user.Password = string(hashedPasword)
+		db.Create(user)
+	}
+
+	return nil
 }
 
-func GetUserDetail(db *gorm.DB,  userDetail *model.UserDetail){
+func CreateUserDetail(db *gorm.DB, userDetail *model.UserDetail){
+	db.Create(userDetail)
+}
+
+func GetUserDetail(db *gorm.DB, userId string) (model.UserDetail,error){
+	userDetail := model.UserDetail{}
 	// find by user id 
-
-	// return user detail 
+	result := db.Where("userId = ? ", userId).First(&userDetail)
+	
+	return userDetail, result.Error
 }
 
-func saveUserToken(db *gorm.DB, useToken *model.UserToken){
+func GetAllUserToken(db *gorm.DB, userId string, channel string) ([]model.UserToken, error){
 	// find token by user id and channel 
+	userToken := []model.UserToken{}
 
-	// return user token detail
+	result := db.Where("userId = ? ", ).Where("channel = ?", channel).Find(&userToken)
+	
+	return userToken, result.Error
 
 }
 
-func updateExistingToken(db *gorm.DB, useToken *model.UserToken) {
-	// find token by user id and channel 
-
-
-	// update curent with now acces token and stuff
+func SaveOrUpdateToken(db *gorm.DB, userToken *model.UserToken) {
+	db.Save(userToken)
 }
