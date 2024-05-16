@@ -10,7 +10,6 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"gorm.io/gorm/schema"
 )
 
 
@@ -30,10 +29,6 @@ func main(){
 	dsn := "host=127.0.0.1 user=admin password=password dbname=local-playground port=5432 sslmode=disable TimeZone=Asia/Shanghai"
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: newLogger,
-		NamingStrategy: schema.NamingStrategy{
-            TablePrefix:   "core_login", // schema name
-            SingularTable: false,
-        },
 	})
 	if err != nil {
 		panic("failed to connect to database")
