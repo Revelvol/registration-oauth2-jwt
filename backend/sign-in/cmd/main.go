@@ -5,7 +5,8 @@ import (
 	"os"
 	"revelvoler/registration-service/internal/model"
 	"time"
-
+	
+	"github.com/joho/godotenv"
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -14,6 +15,11 @@ import (
 
 
 func main(){
+	// load env variables 
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
 	// gorm logger setting
 	newLogger := logger.New(
 		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer

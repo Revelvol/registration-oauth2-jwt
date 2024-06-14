@@ -12,7 +12,7 @@ function App() {
     onSuccess: async (codeResponse) => {
       console.log(codeResponse);
       //todo this will proccess user and get its token from backend 
-      const tokens = await axios.post("http://localhost:3001/auth/google", {
+      const tokens = await axios.post("http://localhost:3001/api/auth/login", {
         code: codeResponse.code,
         channel: "google"
       });
