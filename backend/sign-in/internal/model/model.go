@@ -42,6 +42,7 @@ type UserToken struct {
 	UserId       string
 	CreatedAt    time.Time //special field
 	UpdatedAt    time.Time //special field
+	ExpitedAt 	 time.Time
 	AccessToken  sql.NullString
 	RefreshToken sql.NullString
 	Channel      sql.NullString

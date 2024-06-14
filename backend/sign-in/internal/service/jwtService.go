@@ -11,17 +11,19 @@ import (
 
 
 type AuthClaims struct {
-	UserName string `json:"foo"`
+	Email string
+	Channel string
 	jwt.RegisteredClaims
 }
 
 // Global variable declaration without semicolons
 var hmacSampleSecret = []byte("someValueFromDotENV")
 
-func GenerateTokenFromUserExpireInEpoch(expiredAtEpoch int) (string, error) {
+func GenerateTokenFromUserExpireInEpoch(email string, channel string, expiredAtEpoch int) (string, error) {
 	
 	claims := AuthClaims {
-		"julius",
+		email,
+		channel,
 		jwt.RegisteredClaims{
 			// A usual scenario is to set the expiration time relative to the current time
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add( time.Duration(expiredAtEpoch) * time.Second)),
@@ -105,7 +107,7 @@ func ExtractValidTokenClaims(tokenString string) (AuthClaims , error)  {
 
 	fmt.Println("Token is valid")
 	// Now you can access the fields in authClaims
-	fmt.Println("UserName:", authClaims.UserName)
+	fmt.Println("Email:", authClaims.Email)
 	fmt.Println("Issuer:", authClaims.RegisteredClaims.Issuer)
 	return authClaims, nil	
 }

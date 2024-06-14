@@ -1,12 +1,14 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"revelvoler/registration-service/internal/model"
+	"revelvoler/registration-service/internal/service"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/oauth2"
@@ -27,15 +29,6 @@ type app struct {
 	aud   string
 }
 
-type loginRequest struct {
-	code    string `json:"code"`
-	channel string `json:"channel" binding:"required"`
-}
-type googleDetailResponse struct {
-	Name  string
-	Order string
-}
-
 // OAuth configuration
 var googleOauthConfig = &oauth2.Config{
 	ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
@@ -52,10 +45,10 @@ func AuthServer(db *gorm.DB) *Server {
 	// group api
 	v1 := router.Group("/api/auth")
 	{
-		v1.POST("/login", loginEndpoint)
-		v1.POST("/email/auth", generateEmailCodeEndpoint)
-		v1.POST("/email/validate", validateEmailEndpoint)
-		v1.POST("/refresh", refreshEndpoint)
+		v1.POST("/login", server.loginEndpoint)
+		v1.POST("/email/auth", server.generateEmailCodeEndpoint)
+		v1.POST("/email/validate", server.validateEmailEndpoint)
+		v1.POST("/refresh", server.refreshEndpoint)
 	}
 
 	//return server
@@ -65,53 +58,81 @@ func AuthServer(db *gorm.DB) *Server {
 
 const oauthGoogleUrlAPI = "https://www.googleapis.com/oauth2/v2/userinfo?access_token="
 
-func loginEndpoint(c *gin.Context) {
+type loginRequest struct {
+	Code    string `json:"code"`
+	Channel string `json:"channel" binding:"required"`
+}
+type googleDetailResponse struct {
+    ID            string `json:"id"`
+    Email         string `json:"email"`
+    VerifiedEmail bool   `json:"verified_email"`
+    Name          string `json:"name"`
+    GivenName     string `json:"given_name"`
+    FamilyName    string `json:"family_name"`
+    Picture       string `json:"picture"`
+    Locale        string `json:"locale"`
+}
+
+func (server *Server)loginEndpoint(c *gin.Context) {
 	var req loginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	}
 	var user model.User
+	var userToken model.UserToken
 	// based on channel do login flow (ex google)
-	if req.channel == "google" {
+	if req.Channel == "google" {
 		// use code required from frontend to exchange access_token with google
-		token, err := googleOauthConfig.Exchange(c, req.code)
+		token, err := googleOauthConfig.Exchange(c, req.Code)
 		if err != nil {
 			// todo return context gin error here
-			panic("Failed to get user info" + err.Error())
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		}
-		accessTokenResponse := map[string]interface{}{
-			"access_token":  token.AccessToken,
-			"refresh_token": token.RefreshToken,
-			"expiry":        token.Expiry,
+		userToken = model.UserToken{
+			AccessToken:  sql.NullString{String:token.AccessToken, Valid: true},
+			RefreshToken: sql.NullString{String:token.RefreshToken, Valid: true},
+			ExpitedAt:        token.Expiry,
+			Channel: sql.NullString{String:req.Channel, Valid: true},
 		}
 
 		// GET user detail from google 
 		response, err := http.Get(oauthGoogleUrlAPI + token.AccessToken)
 		if err != nil {
-			panic(fmt.Errorf("failed getting user info: %s", err.Error()))
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		}
 		defer response.Body.Close()
 		contents, err := ioutil.ReadAll(response.Body)
 		if err != nil {
-			panic(fmt.Errorf("failed read response: %s", err.Error()))
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		}
 		// decode json into struct
-		var googleUserDetail googleDetailResponse
-		if err = json.Unmarshal(contents, &googleUserDetail); err != nil {
-			fmt.Println("error:", err)
+		var googleUser googleDetailResponse
+		if err = json.Unmarshal(contents, &googleUser); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		}
-
+		// put detail response into user if posible 
+		user.Email = googleUser.Email
 	} else {
 		// do normal validation 
+		c.JSON(http.StatusBadRequest, gin.H{"error": "unsuported login type, still in development"})
 	}
-	// get or save user TBL_USER (might want to use redis)
-
+	// get or save user TBL_USER 
+	service.SaveOrGetUserData(server.DB, &user) 
 	// save token and channel to TBL_TOKEN
-
+	service.SaveOrUpdateToken(server.DB, &userToken)
+	expireAt := userToken.ExpitedAt.Minute() - time.Now().Minute()
 	// generate JWT Token and response to frontend
+	jwtToken, _ :=  service.GenerateTokenFromUserExpireInEpoch(user.Email, req.Channel, int(userToken.ExpitedAt.Unix()))
+
+	// return token 
+	c.JSON(http.StatusOK, gin.H{
+		"token_type": "Bearer", 
+		"access_token" : jwtToken,
+		"expire_in" : expireAt,
+	})
 }
 
-func refreshEndpoint(c *gin.Context) {
+func (server *Server) refreshEndpoint(c *gin.Context) {
 	// extract user data from jwt
 
 	// check curent session login channel
@@ -132,7 +153,7 @@ func refreshEndpoint(c *gin.Context) {
 
 }
 
-func generateEmailCodeEndpoint(c *gin.Context) {
+func (server *Server) generateEmailCodeEndpoint(c *gin.Context) {
 	// try send email
 
 	// if failed return email not valid, or something went wrong please try again later
@@ -143,7 +164,7 @@ func generateEmailCodeEndpoint(c *gin.Context) {
 
 }
 
-func validateEmailEndpoint(c *gin.Context) {
+func (server *Server) validateEmailEndpoint(c *gin.Context) {
 
 	// get email validation detail, check exist or expired
 
